@@ -1156,6 +1156,27 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<script>
+  // ═══ FIREBASE INIT ═══
+  const firebaseConfig = {
+    apiKey: "AIzaSyC346YEuCOB7WnYxtu_A5kcCPpyrwLR1SA",
+    authDomain: "k-town-project.firebaseapp.com",
+    projectId: "k-town-project",
+    storageBucket: "k-town-project.firebasestorage.app",
+    messagingSenderId: "557058723855",
+    appId: "1:557058723855:web:cda35f64b6f812aec3537a",
+    measurementId: "G-ND925ZBR7H"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const storage = firebase.storage();
+</script>
+
 <script>
   // Hamburger
   const hamburger = document.getElementById('hamburger');
@@ -1486,16 +1507,45 @@
     btn.classList.add('loading');
     btn.disabled = true;
 
-    // Simulate payment processing
-    setTimeout(() => {
+    // Simulate payment processing + save order to Firestore
+    setTimeout(async () => {
       const orderId = 'HKB-' + Date.now().toString().slice(-6);
-      document.getElementById('coOrderId').textContent = '주문번호: #' + orderId;
+      const subtotal = cart.reduce((s, i) => s + (i.price + i.extraPrice) * i.qty, 0);
+      const tax = subtotal * 0.1025;
+      const grand = subtotal + tax;
 
+      // Save order to Firestore
+      try {
+        await db.collection('orders').doc(orderId).set({
+          orderId,
+          items: cart.map(i => ({
+            name: i.name, qty: i.qty, price: i.price,
+            extras: i.extras, spicy: i.spicy
+          })),
+          subtotal: parseFloat(subtotal.toFixed(2)),
+          tax: parseFloat(tax.toFixed(2)),
+          total: parseFloat(grand.toFixed(2)),
+          customer: {
+            name: document.getElementById('coName').value.trim(),
+            phone: document.getElementById('coPhone').value.trim(),
+            email: document.getElementById('coEmail').value.trim(),
+            address: orderType === 'delivery' ? document.getElementById('coAddr').value.trim() : null
+          },
+          orderType,
+          status: 'pending',
+          paymentMethod: 'card_demo',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('✅ Order saved to Firestore:', orderId);
+      } catch (e) {
+        console.warn('Order save failed:', e);
+      }
+
+      document.getElementById('coOrderId').textContent = '주문번호: #' + orderId;
       document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
       document.getElementById('coStep3').classList.add('active');
       document.getElementById('coTitle').textContent = '✅ 주문 완료';
 
-      // Clear cart
       cart = [];
       updateCart();
     }, 2000);
@@ -1593,7 +1643,8 @@
   /* ═══════════════════════════════════════
      ADMIN MODE
      ═══════════════════════════════════════ */
-  const ADMIN_CREDS = { id: 'admin', pw: 'hong1234' };
+  const ADMIN_CREDS = { id: 'admin', pw: 'hong1234' }; // fallback
+  const ADMIN_EMAIL = 'admin@hongkongbanjeom.com'; // Firebase Auth
   let isAdmin = false;
   let editingImg = null;
 
@@ -1671,31 +1722,65 @@
     });
   }
 
-  // Save to localStorage
-  function saveContent() {
+  // Save to Firestore + localStorage (fallback)
+  async function saveContent() {
     const data = {};
-    // Save text
     document.querySelectorAll('[data-editable]').forEach((el, i) => {
       data['text_' + i] = el.innerHTML;
     });
-    // Save images
     document.querySelectorAll('[data-editable-img]').forEach((img, i) => {
       data['img_' + i] = img.src;
     });
+
+    // Save to localStorage as fallback
     localStorage.setItem('hkb_admin_content', JSON.stringify(data));
-    showToast('모든 변경사항이 저장되었습니다 💾');
+
+    // Save to Firestore
+    try {
+      await db.collection('siteContent').doc('main').set({
+        content: data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: auth.currentUser ? auth.currentUser.email : 'local-admin'
+      });
+      showToast('Firestore + 로컬에 저장되었습니다 💾☁️');
+    } catch (e) {
+      console.warn('Firestore save failed, saved locally:', e);
+      showToast('로컬에 저장되었습니다 💾 (DB 연동 확인 필요)');
+    }
+
     document.getElementById('adminStatus').textContent = '✅ 저장 완료!';
     setTimeout(() => {
       document.getElementById('adminStatus').textContent = '텍스트를 클릭하여 편집 | 이미지를 클릭하여 변경';
     }, 2000);
   }
 
-  // Load saved content
-  function loadSavedContent() {
-    const saved = localStorage.getItem('hkb_admin_content');
-    if (!saved) return;
-    const data = JSON.parse(saved);
+  // Load saved content from Firestore (fallback: localStorage)
+  async function loadSavedContent() {
     tagEditables();
+    let data = null;
+
+    // Try Firestore first
+    try {
+      const doc = await db.collection('siteContent').doc('main').get();
+      if (doc.exists && doc.data().content) {
+        data = doc.data().content;
+        console.log('✅ Loaded content from Firestore');
+      }
+    } catch (e) {
+      console.warn('Firestore load failed:', e);
+    }
+
+    // Fallback to localStorage
+    if (!data) {
+      const saved = localStorage.getItem('hkb_admin_content');
+      if (saved) {
+        data = JSON.parse(saved);
+        console.log('📦 Loaded content from localStorage');
+      }
+    }
+
+    if (!data) return;
+
     document.querySelectorAll('[data-editable]').forEach((el, i) => {
       if (data['text_' + i]) el.innerHTML = data['text_' + i];
     });
@@ -1704,10 +1789,13 @@
     });
   }
 
-  // Reset to original
-  function resetContent() {
+  // Reset
+  async function resetContent() {
     if (!confirm('모든 수정사항을 초기화하시겠습니까?\n원래 콘텐츠로 복원됩니다.')) return;
     localStorage.removeItem('hkb_admin_content');
+    try {
+      await db.collection('siteContent').doc('main').delete();
+    } catch (e) { console.warn('Firestore delete failed:', e); }
     location.reload();
   }
 
@@ -1721,9 +1809,30 @@
   document.getElementById('adminLoginBtn').addEventListener('click', doLogin);
   document.getElementById('adminPw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-  function doLogin() {
+  async function doLogin() {
     const id = document.getElementById('adminId').value.trim();
     const pw = document.getElementById('adminPw').value;
+
+    // Try Firebase Auth first (email login)
+    if (id.includes('@')) {
+      try {
+        await auth.signInWithEmailAndPassword(id, pw);
+        document.getElementById('adminLoginOverlay').classList.remove('open');
+        document.getElementById('adminId').value = '';
+        document.getElementById('adminPw').value = '';
+        document.getElementById('adminError').textContent = '';
+        enableAdmin();
+        showToast('Firebase 인증 성공 🔐');
+        return;
+      } catch (e) {
+        document.getElementById('adminError').textContent = 'Firebase: ' + e.message;
+        document.getElementById('adminPw').value = '';
+        document.getElementById('adminPw').focus();
+        return;
+      }
+    }
+
+    // Fallback: local credentials
     if (id === ADMIN_CREDS.id && pw === ADMIN_CREDS.pw) {
       document.getElementById('adminLoginOverlay').classList.remove('open');
       document.getElementById('adminId').value = '';
@@ -1759,9 +1868,12 @@
   let pendingFileData = null;
 
   // File upload handler
+  let pendingFile = null;
+
   document.getElementById('imgEditFile').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    pendingFile = file;
     const reader = new FileReader();
     reader.onload = (ev) => {
       pendingFileData = ev.target.result;
@@ -1772,17 +1884,34 @@
     reader.readAsDataURL(file);
   });
 
-  document.getElementById('imgEditSave').addEventListener('click', () => {
+  document.getElementById('imgEditSave').addEventListener('click', async () => {
     const url = document.getElementById('imgEditUrl').value.trim();
-    const src = pendingFileData || url;
-    if (editingImg && src) {
-      editingImg.src = src;
-      document.getElementById('imgEditPopup').classList.remove('show');
-      pendingFileData = null;
-      document.getElementById('filePreview').innerHTML = '';
-      document.getElementById('imgEditFile').value = '';
+
+    // If file selected, try uploading to Firebase Storage
+    if (pendingFile) {
+      try {
+        const fileName = 'images/' + Date.now() + '_' + pendingFile.name;
+        const ref = storage.ref(fileName);
+        showToast('이미지 업로드 중... ☁️');
+        await ref.put(pendingFile);
+        const downloadUrl = await ref.getDownloadURL();
+        editingImg.src = downloadUrl;
+        showToast('Firebase Storage에 업로드 완료 📷☁️');
+      } catch (e) {
+        console.warn('Storage upload failed, using base64:', e);
+        editingImg.src = pendingFileData;
+        showToast('로컬 이미지로 적용됨 (Storage 권한 확인 필요)');
+      }
+    } else if (url) {
+      editingImg.src = url;
       showToast('이미지가 변경되었습니다 📷');
     }
+
+    document.getElementById('imgEditPopup').classList.remove('show');
+    pendingFileData = null;
+    pendingFile = null;
+    document.getElementById('filePreview').innerHTML = '';
+    document.getElementById('imgEditFile').value = '';
   });
   document.getElementById('imgEditCancel').addEventListener('click', () => {
     document.getElementById('imgEditPopup').classList.remove('show');
