@@ -1561,75 +1561,143 @@
   });
 
   /* ═══════════════════════════════════════
-     LANGUAGE TOGGLE (KO ↔ EN)
+     LANGUAGE TOGGLE (KO ↔ EN) — data-attribute based
      ═══════════════════════════════════════ */
-  const translations = {
-    // Nav
-    '소개': 'About', '메뉴': 'Menu', '갤러리': 'Gallery', '매장 정보': 'Location',
-    // Hero
-    '홍콩반점': 'Hong Kong Banjeom', '시카고': 'Chicago',
-    '정통 한국식 중화요리의 맛, 시카고에서 만나보세요': 'Authentic Korean-Chinese cuisine, now in Chicago',
-    '메뉴 보기': 'View Menu',
-    // About
-    '우리의 ': 'Our ', '이야기': 'Story',
-    '한국식 중화요리의 정수를 시카고에서': 'The finest Korean-Chinese cuisine in Chicago',
-    '시카고 최고의 한국식 중화요리': 'Chicago\'s Best Korean-Chinese Restaurant',
-    '홍콩반점은 정통 한국식 중화요리를 시카고 지역에서 선보이고 있습니다. 짜장면, 짬뽕, 탕수육 등 한국에서 사랑받는 중화요리의 맛을 그대로 재현합니다.': 'Hong Kong Banjeom brings authentic Korean-Chinese cuisine to the Chicago area. We faithfully recreate beloved dishes like Jjajangmyeon, Jjamppong, and Tangsuyuk.',
-    '엄선된 재료와 숙련된 셰프의 손맛으로 매일 신선하게 준비되는 요리를 경험해보세요.': 'Experience dishes prepared fresh daily with carefully selected ingredients and our skilled chef\'s touch.',
-    '메뉴 보기 →': 'View Menu →',
-    // Menu
-    '메뉴 ': 'Menu ', '판': '', '정성을 담은 한국식 중화요리': 'Korean-Chinese cuisine made with care',
-    '면 요리': 'Noodles', '밥 요리': 'Rice', '요리 & 안주': 'Dishes', '세트 메뉴': 'Set Menu',
-    // Menu items
-    '짜장면': 'Jjajangmyeon', '짬뽕': 'Jjamppong', '간짜장': 'Gan-Jjajang', '볶음짬뽕': 'Stir-fried Jjamppong',
-    '울면': 'Ulmyeon', '쟁반짜장': 'Platter Jjajang', '짜장밥': 'Jjajang Rice', '볶음밥': 'Fried Rice',
-    '잡채밥': 'Japchae Rice', '마파두부밥': 'Mapo Tofu Rice',
-    '탕수육': 'Tangsuyuk', '깐풍기': 'Kkanpunggi', '라조기': 'Rajogi', '군만두': 'Pan-fried Dumplings',
-    '깐쇼새우': 'Chili Shrimp', '팔보채': 'Palbochae',
-    '세트 A — 커플 세트': 'Set A — Couple', '세트 B — 가족 세트': 'Set B — Family', '세트 C — 파티 세트': 'Set C — Party',
-    // Gallery
-    '갤러리 ': 'Gallery ', '사진': 'Photos', '맛있는 순간들': 'Delicious moments',
-    // Location
-    '매장 ': 'Store ', '정보': 'Info', '가까운 매장을 방문하세요': 'Visit our nearest location',
-    '영업시간': 'HOURS', '전화': 'PHONE', '주차': 'PARKING',
-    '건물 앞 무료 주차 가능': 'Free parking in front', '건물 뒤편 주차장 이용': 'Parking lot in the back',
-    // Cart
-    '장바구니': 'Cart', '장바구니 담기': 'Add to Cart', '장바구니가 비어있습니다': 'Your cart is empty',
-    '합계': 'Total', '주문하기': 'Place Order',
-    '곱빼기 (+$3.00)': 'Extra Large (+$3.00)',
-  };
-
   let currentLang = 'ko';
-  const originals = new Map();
+
+  // Tag all translatable elements on init
+  function initTranslations() {
+    const map = [
+      // Nav links
+      {s: '.nav-links a[href="#about"]', en: 'About'},
+      {s: '.nav-links a[href="#menu"]', en: 'Menu'},
+      {s: '.nav-links a[href="#gallery"]', en: 'Gallery'},
+      {s: '.nav-links a[href="#location"]', en: 'Location'},
+      // Hero
+      {s: '.hero h1', en: '<span class="red">Hong Kong Banjeom</span><br><span class="gold">Chicago</span>', html: true},
+      {s: '.hero p', en: 'Authentic Korean-Chinese cuisine, now in Chicago'},
+      {s: '.hero .btn', en: 'View Menu'},
+      // About
+      {s: '#about .section-title', en: 'Our <span class="red">Story</span>', html: true},
+      {s: '#about .section-sub', en: 'The finest Korean-Chinese cuisine in Chicago'},
+      {s: '.about-text h3', en: "Chicago's Best Korean-Chinese Restaurant"},
+      {s: '.about-text p:nth-child(2)', en: 'Hong Kong Banjeom brings authentic Korean-Chinese cuisine to the Chicago area. We faithfully recreate beloved dishes like Jjajangmyeon, Jjamppong, and Tangsuyuk.'},
+      {s: '.about-text p:nth-child(3)', en: "Experience dishes prepared fresh daily with carefully selected ingredients and our skilled chef's touch."},
+      {s: '.about-text .btn', en: 'View Menu →'},
+      // Menu section
+      {s: '#menu .section-title', en: '<span class="red">Menu</span>', html: true},
+      {s: '#menu .section-sub', en: 'Korean-Chinese cuisine made with care'},
+      // Menu tabs
+      {s: '[data-cat="noodles"]', en: 'Noodles'},
+      {s: '[data-cat="rice"]', en: 'Rice'},
+      {s: '[data-cat="appetizer"]', en: 'Dishes & Sides'},
+      {s: '[data-cat="set"]', en: 'Set Menu'},
+      // Gallery
+      {s: '#gallery .section-title', en: 'Gallery <span class="red">Photos</span>', html: true},
+      {s: '#gallery .section-sub', en: 'Delicious moments'},
+      // Location
+      {s: '#location .section-title', en: 'Store <span class="red">Info</span>', html: true},
+      {s: '#location .section-sub', en: 'Visit our nearest location'},
+    ];
+
+    // Menu item names
+    const menuNames = {
+      '짜장면':'Jjajangmyeon','짬뽕':'Jjamppong','간짜장':'Gan-Jjajang','볶음짬뽕':'Stir-fried Jjamppong',
+      '울면':'Ulmyeon','쟁반짜장':'Platter Jjajang','짜장밥':'Jjajang Rice','볶음밥':'Fried Rice',
+      '잡채밥':'Japchae Rice','마파두부밥':'Mapo Tofu Rice','탕수육':'Tangsuyuk','깐풍기':'Kkanpunggi',
+      '라조기':'Rajogi','군만두':'Pan-fried Dumplings','깐쇼새우':'Chili Shrimp','팔보채':'Palbochae',
+      '세트 A — 커플 세트':'Set A — Couple','세트 B — 가족 세트':'Set B — Family','세트 C — 파티 세트':'Set C — Party'
+    };
+    const menuDescs = {
+      '춘장과 신선한 야채로 만든 정통 짜장면':'Black bean sauce noodles with fresh vegetables',
+      '해물과 매콤한 국물의 조화, 시원한 짬뽕':'Spicy seafood noodle soup',
+      '고기와 야채를 듬뿍 넣은 프리미엄 짜장':'Premium jjajang with extra meat & vegetables',
+      '불맛 가득한 매콤 볶음짬뽕':'Stir-fried spicy seafood noodles',
+      '부드러운 전분 국물에 해물을 넣은 울면':'Thick seafood noodle soup',
+      '넓은 쟁반에 펼친 비주얼 짜장면':'Platter-style jjajangmyeon for sharing',
+      '짜장 소스와 밥의 만남':'Black bean sauce over rice',
+      '웍에서 센 불로 볶아낸 볶음밥':'Wok-fried rice',
+      '다양한 야채와 당면의 잡채를 밥 위에':'Glass noodle stir-fry over rice',
+      '매콤한 마파두부 소스와 밥':'Spicy mapo tofu over rice',
+      '바삭한 튀김과 새콤달콤한 소스':'Crispy sweet & sour pork',
+      '매콤 바삭한 깐풍 치킨':'Spicy crispy chicken',
+      '매콤하게 볶아낸 닭고기 요리':'Stir-fried spicy chicken',
+      '바삭하게 구운 수제 만두':'Pan-fried handmade dumplings',
+      '칠리소스에 볶은 통새우':'Chili sauce shrimp',
+      '8가지 해물과 야채의 볶음 요리':'Eight-treasure seafood stir-fry',
+      '짜장면 + 짬뽕 + 탕수육 (소)':'Jjajangmyeon + Jjamppong + Tangsuyuk (S)',
+      '짜장면 2 + 짬뽕 2 + 탕수육 (대) + 군만두':'Jjajangmyeon 2 + Jjamppong 2 + Tangsuyuk (L) + Dumplings',
+      '면 4 + 탕수육 (대) + 깐풍기 + 볶음밥':'Noodles 4 + Tangsuyuk (L) + Kkanpunggi + Fried Rice'
+    };
+    const locationLabels = {'영업시간':'HOURS','전화':'PHONE','주차':'PARKING'};
+    const locationTexts = {
+      '건물 앞 무료 주차 가능':'Free parking in front',
+      '건물 뒤편 주차장 이용':'Parking lot in the back'
+    };
+
+    // Tag fixed elements
+    map.forEach(item => {
+      const el = document.querySelector(item.s);
+      if (!el) return;
+      el.setAttribute('data-ko', item.html ? el.innerHTML : el.textContent);
+      el.setAttribute('data-en', item.en);
+      if (item.html) el.setAttribute('data-lang-html', '1');
+    });
+
+    // Tag menu items
+    document.querySelectorAll('.menu-item-body h4').forEach(el => {
+      const ko = el.textContent.trim();
+      if (menuNames[ko]) { el.setAttribute('data-ko', ko); el.setAttribute('data-en', menuNames[ko]); }
+    });
+    document.querySelectorAll('.menu-item-body .desc').forEach(el => {
+      const ko = el.textContent.trim();
+      if (menuDescs[ko]) { el.setAttribute('data-ko', ko); el.setAttribute('data-en', menuDescs[ko]); }
+    });
+
+    // Tag location labels & texts
+    document.querySelectorAll('.location-card .label').forEach(el => {
+      const ko = el.textContent.trim();
+      if (locationLabels[ko]) { el.setAttribute('data-ko', ko); el.setAttribute('data-en', locationLabels[ko]); }
+    });
+    document.querySelectorAll('.location-card p').forEach(el => {
+      const ko = el.textContent.trim();
+      if (locationTexts[ko]) { el.setAttribute('data-ko', ko); el.setAttribute('data-en', locationTexts[ko]); }
+    });
+
+    // Location card titles
+    document.querySelectorAll('.location-card h3').forEach(el => {
+      el.setAttribute('data-ko', el.textContent);
+      el.setAttribute('data-en', el.textContent.replace('본점', 'Main').replace('2호점', 'Branch'));
+    });
+
+    // Time texts
+    document.querySelectorAll('.location-card p').forEach(el => {
+      const t = el.textContent.trim();
+      if (t.startsWith('월–토')) { el.setAttribute('data-ko', t); el.setAttribute('data-en', t.replace('월–토','Mon–Sat')); }
+      if (t.startsWith('일:')) { el.setAttribute('data-ko', t); el.setAttribute('data-en', t.replace('일:','Sun:')); }
+    });
+
+    // Cart & checkout buttons
+    document.getElementById('btnOrder').setAttribute('data-ko', '주문하기');
+    document.getElementById('btnOrder').setAttribute('data-en', 'Place Order');
+  }
+
+  function switchLang(lang) {
+    document.querySelectorAll('[data-ko][data-en]').forEach(el => {
+      const val = el.getAttribute('data-' + lang);
+      if (!val) return;
+      if (el.getAttribute('data-lang-html') === '1') el.innerHTML = val;
+      else el.textContent = val;
+    });
+    currentLang = lang;
+    document.getElementById('langLabel').textContent = lang === 'ko' ? 'EN' : '한';
+  }
+
+  initTranslations();
 
   document.getElementById('langToggle').addEventListener('click', (e) => {
     e.preventDefault();
-    if (currentLang === 'ko') {
-      // Save originals and translate to EN
-      document.querySelectorAll('h1,h2,h3,h4,p,a,button,span,.desc,.section-sub,.label,.cart-empty,.modal-desc').forEach(el => {
-        if (el.children.length > 0 && !el.classList.contains('section-title')) return;
-        const txt = el.textContent.trim();
-        if (translations[txt]) {
-          if (!originals.has(el)) originals.set(el, el.textContent);
-          el.textContent = translations[txt];
-        }
-      });
-      // Handle section titles with mixed content
-      document.querySelectorAll('.section-title').forEach(el => {
-        if (!originals.has(el)) originals.set(el, el.innerHTML);
-      });
-      currentLang = 'en';
-      document.getElementById('langLabel').textContent = '한';
-    } else {
-      // Restore originals
-      originals.forEach((val, el) => {
-        if (el.classList.contains('section-title')) el.innerHTML = val;
-        else el.textContent = val;
-      });
-      originals.clear();
-      currentLang = 'ko';
-      document.getElementById('langLabel').textContent = 'EN';
-    }
+    switchLang(currentLang === 'ko' ? 'en' : 'ko');
   });
 
   // Toast notification
