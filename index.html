@@ -188,7 +188,49 @@
       overflow: hidden;
       transition: transform .3s;
     }
-    .gallery-item:hover { transform: scale(1.03); }
+    .gallery-item:hover { transform: scale(1.03); cursor: pointer; }
+
+    /* ─── GALLERY LIGHTBOX ─── */
+    .gallery-lightbox {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.92);
+      backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s;
+    }
+    .gallery-lightbox.open { opacity: 1; pointer-events: all; }
+    .gallery-lightbox img {
+      max-width: 90vw; max-height: 85vh;
+      object-fit: contain; border-radius: 8px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.6);
+      transform: scale(.95); transition: transform .3s;
+    }
+    .gallery-lightbox.open img { transform: scale(1); }
+    .gallery-lightbox .lb-close {
+      position: absolute; top: 1.5rem; right: 1.5rem;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(0,0,0,.6); border: 1px solid var(--dark-border);
+      color: #fff; font-size: 1.4rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s;
+    }
+    .gallery-lightbox .lb-close:hover { background: var(--red); }
+    .gallery-lightbox .lb-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(0,0,0,.5); border: 1px solid var(--dark-border);
+      color: #fff; font-size: 1.5rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s;
+    }
+    .gallery-lightbox .lb-nav:hover { background: var(--red); }
+    .gallery-lightbox .lb-prev { left: 1.5rem; }
+    .gallery-lightbox .lb-next { right: 1.5rem; }
+    .gallery-lightbox .lb-caption {
+      position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      color: var(--text-muted); font-size: .9rem; font-weight: 600;
+    }
 
     /* ─── LOCATION ─── */
     #location { background: var(--black); }
@@ -1096,6 +1138,15 @@
   </div>
 </div>
 
+<!-- GALLERY LIGHTBOX -->
+<div class="gallery-lightbox" id="galleryLightbox">
+  <button class="lb-close" id="lbClose">✕</button>
+  <button class="lb-nav lb-prev" id="lbPrev">‹</button>
+  <button class="lb-nav lb-next" id="lbNext">›</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lb-caption" id="lbCaption"></div>
+</div>
+
 <!-- MENU DETAIL MODAL -->
 <div class="modal-overlay" id="menuModal">
   <div class="modal" style="position:relative;">
@@ -1990,6 +2041,48 @@
 
   // Load saved content on page load
   loadSavedContent();
+
+  // ─── GALLERY LIGHTBOX ───
+  (() => {
+    const lb = document.getElementById('galleryLightbox');
+    const lbImg = document.getElementById('lbImg');
+    const lbCaption = document.getElementById('lbCaption');
+    const items = document.querySelectorAll('.gallery-item img');
+    let currentIdx = 0;
+
+    function openLb(idx) {
+      currentIdx = idx;
+      const img = items[idx];
+      lbImg.src = img.src.replace('w=500&h=500', 'w=1200&h=1200');
+      lbCaption.textContent = img.alt || '';
+      lb.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLb() {
+      lb.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function navigate(dir) {
+      currentIdx = (currentIdx + dir + items.length) % items.length;
+      const img = items[currentIdx];
+      lbImg.src = img.src.replace('w=500&h=500', 'w=1200&h=1200');
+      lbCaption.textContent = img.alt || '';
+    }
+
+    items.forEach((img, i) => {
+      img.parentElement.addEventListener('click', () => openLb(i));
+    });
+    document.getElementById('lbClose').addEventListener('click', closeLb);
+    document.getElementById('lbPrev').addEventListener('click', () => navigate(-1));
+    document.getElementById('lbNext').addEventListener('click', () => navigate(1));
+    lb.addEventListener('click', (e) => { if (e.target === lb) closeLb(); });
+    document.addEventListener('keydown', (e) => {
+      if (!lb.classList.contains('open')) return;
+      if (e.key === 'Escape') closeLb();
+      if (e.key === 'ArrowLeft') navigate(-1);
+      if (e.key === 'ArrowRight') navigate(1);
+    });
+  })();
 </script>
 
 </body>
